@@ -30,41 +30,41 @@ if (!cropList) {
 async function loadCrops() {
   cropList.innerHTML = "Loading crops...";
 
-  try {
-    const cropsRef = collection(db, "villages", "namma-ooru-demo", "crops");
-    const snap = await getDocs(cropsRef);
+  const cropsRef = collection(db, "villages", "namma-ooru-demo", "crops");
+  const pricesRef = collection(db, "villages", "namma-ooru-demo", "prices");
 
-    console.log("Crop docs:", snap.size);
+  const [cropsSnap, pricesSnap] = await Promise.all([
+    getDocs(cropsRef),
+    getDocs(pricesRef)
+  ]);
 
-    if (snap.empty) {
-      cropList.innerHTML = "No crops available today";
-      return;
-    }
+  const priceMap = {};
+  pricesSnap.forEach(p => {
+    priceMap[p.id] = p.data();
+  });
 
-    cropList.innerHTML = "";
+  cropList.innerHTML = "";
 
-    snap.forEach(doc => {
-      const data = doc.data();
+  cropsSnap.forEach(docSnap => {
+    const crop = docSnap.data();
+    if (!crop.visible) return;
 
-      if (!data.visible) return;
+    const priceDoc = priceMap[crop.name.toLowerCase()];
+    const priceText = priceDoc ? `₹${priceDoc.price} / kg` : "Price not set";
 
-      const div = document.createElement("div");
-      div.className = "crop";
+    const div = document.createElement("div");
+    div.className = "crop";
 
-      div.innerHTML = `
-        <h3>${data.name}</h3>
-        <p>Quantity: ${data.quantity}</p>
-        <button onclick="window.location.href='tel:${data.farmerPhone}'">📞 Call</button>
-        <button onclick="window.location.href='https://wa.me/91${data.farmerPhone}'">💬 WhatsApp</button>
-      `;
+    div.innerHTML = `
+      <h3>${crop.name}</h3>
+      <p><strong>${priceText}</strong></p>
+      <p>Quantity: ${crop.quantity}</p>
+      <button onclick="location.href='tel:${crop.farmerPhone}'">📞 Call</button>
+      <button onclick="location.href='https://wa.me/91${crop.farmerPhone}'">💬 WhatsApp</button>
+    `;
 
-      cropList.appendChild(div);
-    });
-
-  } catch (error) {
-    console.error("Firestore error:", error);
-    cropList.innerHTML = "Error loading crops";
-  }
+    cropList.appendChild(div);
+  });
 }
 
 // 🔴 THIS WAS MISSING — NOW THE FUNCTION ACTUALLY RUNS
